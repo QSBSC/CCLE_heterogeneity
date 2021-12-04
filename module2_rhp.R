@@ -12,35 +12,38 @@ library(ggplot2)
 library(scales)
 library(egg)
 source("custom_magma.R")
-source("cancer_color_ccle.R")
 source("dbscan_get_sig.R")
 source("robust_nmf_programs.R")
-source("nmf_cell_class")
+source("nmf_cell_class.R")
 
+OUTPUT_PATH <- "~/Kinker_output"
+DATAPATH <- "/data/QSBSC/Kinker_et_al"
 
 # read scRNA-seq data from cell lines and tumors
-expr_ccle <- readRDS("CCLE_heterogeneity_Rfiles/CCLE_scRNAseq_CPM.RDS") # CCLE cell lines
-expr_tumor <- readRDS("CCLE_heterogeneity_Rfiles/tumors_scRNAseq_logTPM.RDS") # human tumors
+expr_ccle <- readRDS(file.path(DATAPATH,"CCLE_heterogeneity_Rfiles/CCLE_scRNAseq_CPM.RDS")) # CCLE cell lines
+expr_tumor <- readRDS(file.path(DATAPATH,"CCLE_heterogeneity_Rfiles/tumors_scRNAseq_logTPM.RDS")) # human tumors
 
 # read metadata
-meta_ccle <- readRDS("CCLE_heterogeneity_Rfiles/CCLE_metadata.RDS")
+meta_ccle <- readRDS(file.path(DATAPATH,"CCLE_heterogeneity_Rfiles/CCLE_metadata.RDS"))
+source("cancer_color_ccle.R")
 
 # read heterogeneity programs identified using tSNE and DBSCAN (i.e. discrete heterogeneity)
-dbscan_programs_ccle <- readRDS("Expected_results/module1/discr_clusters_minpt5_eps1.8_ccle.RDS")
+dbscan_programs_ccle <- readRDS(file.path(OUTPUT_PATH,"module1/discr_clusters_minpt5_eps1.8_ccle.RDS"))
 
 # read heterogeneity programs identified using NMF (i.e. discrete + continuous heterogeneity)
-nmf_programs_genes_ccle <- readRDS("Expected_results/module1/nmf_w_basis_ccle.RDS") # nmf gene scores
-nmf_programs_cells_ccle <- readRDS("Expected_results/module1/nmf_h_coef_ccle.RDS") # nmf cell scores
+nmf_programs_genes_ccle <- readRDS(file.path(OUTPUT_PATH,"module1/nmf_w_basis_ccle.RDS")) # nmf gene scores
+nmf_programs_cells_ccle <- readRDS(file.path(OUTPUT_PATH,"module1/nmf_h_coef_ccle.RDS")) # nmf cell scores
 
-nmf_programs_genes_tumor <- readRDS("Expected_results/module1/nmf_w_basis_tumor.RDS") # nmf gene scores
-nmf_programs_cells_tumor <- readRDS("Expected_results/module1/nmf_h_coef_tumor.RDS") # nmf cell scores
+nmf_programs_genes_tumor <- readRDS(file.path(OUTPUT_PATH,"module1/nmf_w_basis_tumor.RDS")) # nmf gene scores
+nmf_programs_cells_tumor <- readRDS(file.path(OUTPUT_PATH,"module1/nmf_h_coef_tumor.RDS")) # nmf cell scores
 
 
 # ************************************************************************** 
 # Identifying recurrent heterogeneous programs (RHPs) in cell lines - tSNE + DBSCAN
 
 # get gene programs for dbscan clusters (ignore cluster composed of more than 90% of cells)
-dbscan_programs_sig_ccle <- lapply(names(dbscan_programs_ccle), function(x) dbscan_get_sig(dbscan_programs_ccle[[x]], cell_line=x, max_size=0.9))
+dbscan_programs_sig_ccle <- lapply(names(dbscan_programs_ccle), function(x) 
+  dbscan_get_sig(dbscan_programs_ccle[[x]], cell_line=x, max_size=0.9, meta=meta_ccle))
 names(dbscan_programs_sig_ccle) <- names(dbscan_programs_ccle)
 dbscan_programs_sig_ccle <- unlist(dbscan_programs_sig_ccle, recursive = F)
 
@@ -83,8 +86,11 @@ p1.2 <- ggplot(dbscan_annot_type_ccle, aes(y="", x=1:nrow(dbscan_annot_type_ccle
   labs(x="", y="") +
   guides(fill = guide_legend(title = "",  override.aes = list(size = 5), ncol=1), color=FALSE) 
 
+# create module2 output dir if not present
+if(!dir.exists(file.path(OUTPUT_PATH,"module2"))) dir.create(file.path(OUTPUT_PATH,"module2"))
+
 # combine p1 plots                                                                   
-pdf("Output/module2/dbscan_metaprograms_eps1.8_ccle.pdf", height = 6.5, width = 9, onefile = F)
+pdf(file.path(OUTPUT_PATH,"module2/dbscan_metaprograms_eps1.8_ccle.pdf"), height = 6.5, width = 9, onefile = F)
 egg::ggarrange(p1.2,p1.1, nrow=2, heights = c(0.5,9))
 dev.off()
  
@@ -146,13 +152,13 @@ p2.2 <- ggplot(nmf_corr_complexity_ccle, aes(y=corr, x = 1:nrow(nmf_corr_complex
   scale_x_continuous(expand = c(0,0))
 
 # combine p2 plots
-pdf("Output/module2/nmf_metaprograms_complexity_ccle.pdf", height = 6, width = 7, onefile=FALSE) 
+pdf(file.path(OUTPUT_PATH,"module2/nmf_metaprograms_complexity_ccle.pdf"), height = 6, width = 7, onefile=FALSE) 
 egg::ggarrange(p2.2,p2.1, nrow=2, ncol = 1, heights = c(1,5))
 dev.off()
                                            
 # manually remove programs associated with cell complexity and save output
 nmf_intersect_ccle <- nmf_intersect_ccle[-c(424:504, 509:514),-c(424:504, 509:514)]
-saveRDS(nmf_programs_sig_ccle[,colnames(nmf_intersect_ccle)], "Output/module2/nmf_programs_sig_ccle.RDS")                                                                                          
+saveRDS(nmf_programs_sig_ccle[,colnames(nmf_intersect_ccle)], file.path(OUTPUT_PATH,"module2/nmf_programs_sig_ccle.RDS"))                                                                                          
 # hierarchical clustering of the filtered similarity matrix 
 nmf_intersect_hc_ccle <- hclust(as.dist(50-nmf_intersect_ccle), method="average") 
 nmf_intersect_hc_ccle <- reorder(as.dendrogram(nmf_intersect_hc_ccle), colMeans(nmf_intersect_ccle))
@@ -188,8 +194,8 @@ for(i in names(nmf_programs_cells_class_ccle)) {
 }
 
 
-nmf_vs_dbscan <- nmf_vs_dbscan[sapply(nmf_vs_dbscan, function(x) length(which(x<0.001)) != 0)]
-nmf_vs_dbscan <- data.frame("discrete"=is.element(colnames(nmf_intersect_ccle), names(nmf_vs_dbscan)))                                                       
+nmf_vs_dbscan_ccle <- nmf_vs_dbscan[sapply(nmf_vs_dbscan, function(x) length(which(x<0.001)) != 0)]
+nmf_vs_dbscan_ccle <- data.frame("discrete"=is.element(colnames(nmf_intersect_ccle), names(nmf_vs_dbscan)))                                                       
 p3.2 <- ggplot(nmf_vs_dbscan, aes(x=1:nrow(nmf_vs_dbscan_ccle), y=0, fill=discrete, colour=discrete))+
   geom_tile() + 
   scale_fill_manual(values = c("white", "black"), breaks="TRUE", labels="Discrete programs", name="") +
@@ -201,14 +207,14 @@ p3.2 <- ggplot(nmf_vs_dbscan, aes(x=1:nrow(nmf_vs_dbscan_ccle), y=0, fill=discre
 
 
 # combine p3 plots
-pdf("Output/module2/nmf_metaprograms_discrete_ccle.pdf", height = 6, width = 7, onefile=FALSE)
+pdf(file.path(OUTPUT_PATH,"module2/nmf_metaprograms_discrete_ccle.pdf"), height = 6, width = 7, onefile=FALSE)
 egg::ggarrange(p3.2,p3.1, nrow=2, ncol = 1, heights = c(0.4,6))
 dev.off()
 
 # manually select non-cell cycle programs   
 nmf_intersect_nc_ccle  <- nmf_intersect_ccle[-c(433:800), -c(433:800)]
                                                        
-saveRDS(nmf_programs_sig_ccle[,colnames(nmf_intersect_nc_ccle)], "Output/module2/nmf_programs_sig_nc_ccle.RDS")           
+saveRDS(nmf_programs_sig_ccle[,colnames(nmf_intersect_nc_ccle)], file.path(OUTPUT_PATH,"module2/nmf_programs_sig_nc_ccle.RDS"))          
                                                        
 # hierarchical clustering of the filtered similarity matrix      
 nmf_intersect_hc_nc_ccle <- hclust(as.dist(50-nmf_intersect_nc_ccle), method="average") 
@@ -273,11 +279,13 @@ nmf_meta10_ccle_programs <- colnames(nmf_intersect_nc_ccle)[278:432]
 
 nmf_meta_all_ccle <- list(skinpig=nmf_meta1_ccle, emtI=nmf_meta2_ccle, emtII=nmf_meta3_ccle, ifn=nmf_meta4_ccle, emtIII=nmf_meta5_ccle, p53snc=nmf_meta6_ccle, episen=nmf_meta7_ccle, stress=nmf_meta8_ccle, protmat=nmf_meta9_ccle, protdreg=nmf_meta10_ccle)                                    
                                       
-saveRDS(nmf_meta_all_ccle,"Output/module2/nmf_metaprograms_sig_nc_ccle.RDS")
+saveRDS(nmf_meta_all_ccle,file.path(OUTPUT_PATH,"module2/nmf_metaprograms_sig_nc_ccle.RDS"))
                                       
-saveRDS(lapply(nmf_meta_all_ccle, function(x) x[x>=0.25]),"Output/module2/nmf_metaprograms_sigtop25_nc_ccle.RDS") 
+saveRDS(lapply(nmf_meta_all_ccle, function(x) x[x>=0.25]),file.path(OUTPUT_PATH,"module2/nmf_metaprograms_sigtop25_nc_ccle.RDS"))
                                       
-saveRDS(list(skinpig=nmf_meta1_ccle_programs, emtI=nmf_meta2_ccle_programs, emtII=nmf_meta3_ccle_programs, ifn=nmf_meta4_ccle_programs, emtIII=nmf_meta5_ccle_programs, p53snc=nmf_meta6_ccle_programs, episen=nmf_meta7_ccle_programs, stress=nmf_meta8_ccle_programs, protmat=nmf_meta9_ccle_programs, protdreg=nmf_meta10_ccle_programs),"Output/module2/nmf_metaprograms_programs_nc_ccle.RDS")                                   
+saveRDS(list(skinpig=nmf_meta1_ccle_programs, emtI=nmf_meta2_ccle_programs, emtII=nmf_meta3_ccle_programs, ifn=nmf_meta4_ccle_programs, 
+             emtIII=nmf_meta5_ccle_programs, p53snc=nmf_meta6_ccle_programs, episen=nmf_meta7_ccle_programs, stress=nmf_meta8_ccle_programs, 
+             protmat=nmf_meta9_ccle_programs, protdreg=nmf_meta10_ccle_programs),file.path(OUTPUT_PATH,"module2/nmf_metaprograms_programs_nc_ccle.RDS"))                                
                                       
 # plot NMF gene scores
 nmf_nc_genes <- c(rev(nmf_meta1_ccle), rev(nmf_meta2_ccle), rev(nmf_meta3_ccle), rev(nmf_meta4_ccle), rev(nmf_meta5_ccle), rev(nmf_meta6_ccle), rev(nmf_meta7_ccle), rev(nmf_meta8_ccle), rev(nmf_meta9_ccle), rev(nmf_meta10_ccle))
@@ -299,11 +307,11 @@ p4.3 <- ggplot(data = nmf_nc_genes_melt, aes(x=Var2, y=Var1, fill=value*100)) +
   geom_vline(xintercept=c(25, 53, 75, 95, 109, 132, 167, 250, 278), color = "black", size=0.2) 
                                                      
 # combine plots 4
-pdf("Output/module2/nmf_metaprograms_nc_ccle.pdf", height = 9.5, width = 8, onefile=FALSE)
+pdf(file.path(OUTPUT_PATH,"module2/nmf_metaprograms_nc_ccle.pdf"), height = 9.5, width = 8, onefile=FALSE)
 egg::ggarrange( p4.2,p4.1,p4.3, nrow = 3, heights = c(0.5,9,7))
-dev.off()                               
-                                       
-                                                
+dev.off()
+## Throws an error about object 'Var2' not being found. ???
+
 
 # ************************************************************************** 
 # Identifying recurrent heterogeneous programs (RHPs) in tumors - NMF                                                              
@@ -369,7 +377,7 @@ p5.3 <- ggplot(nmf_corr_complexity_tumor, aes(y=corr, x = 1:nrow(nmf_corr_comple
   scale_y_continuous(expand = c(0,0), limits = c(-0.9,0.9), breaks = seq(-0.8, 0.8, 0.4)) + 
   scale_x_continuous(expand = c(0,0))                                                                           
 # combine plots p5                                                                           
-pdf("Output/module2/nmf_metaprograms_tumors.pdf", width = 9.5, height = 7, onefile = F)
+pdf(file.path(OUTPUT_PATH,"module2/nmf_metaprograms_tumors.pdf"), width = 9.5, height = 7, onefile = F)
 ggarrange(p5.3,p5.2, p5.1, nrow = 3, heights = c(2,0.5,8)) 
 dev.off()
 
@@ -388,8 +396,8 @@ nmf_meta5_tumor <- sort(table(nmf_programs_sig_tumor[,colnames(nmf_intersect_tum
 nmf_meta5_tumor_programs <- colnames(nmf_intersect_tumor)[44:52]         
                
 nmf_meta_all_tumor <- list(episen=nmf_meta1_tumor, immu=nmf_meta2_tumor, stress=nmf_meta3_tumor, hypoxia=nmf_meta4_tumor, emt=nmf_meta5_tumor)                                                                           
-saveRDS(nmf_meta_all_tumor,"Output/module2/nmf_metaprograms_sig_nc_tumor.RDS")
+saveRDS(nmf_meta_all_tumor,file.path(OUTPUT_PATH,"module2/nmf_metaprograms_sig_nc_tumor.RDS"))
 
-saveRDS(lapply(nmf_meta_all_tumor, function(x) x[x>=0.25]),"Output/module2/nmf_metaprograms_sigtop25_nc_tumor.RDS")                                                         
-                                      
-saveRDS(list(episen=nmf_meta1_tumor_programs, immu=nmf_meta2_tumor_programs, stress=nmf_meta3_tumor_programs, hypoxia=nmf_meta4_tumor_programs, emt=nmf_meta5_tumor_programs),"Output/module2/nmf_metaprograms_programs_nc_tumor.RDS")                                                                           
+saveRDS(lapply(nmf_meta_all_tumor, function(x) x[x>=0.25]),file.path(OUTPUT_PATH,"module2/nmf_metaprograms_sigtop25_nc_tumor.RDS"))
+saveRDS(list(episen=nmf_meta1_tumor_programs, immu=nmf_meta2_tumor_programs, stress=nmf_meta3_tumor_programs, 
+             hypoxia=nmf_meta4_tumor_programs, emt=nmf_meta5_tumor_programs),file.path(OUTPUT_PATH,"module2/nmf_metaprograms_programs_nc_tumor.RDS"))                                                                         
