@@ -38,8 +38,9 @@ discr_clusters_minpt5_1.8_ccle <- lapply(expr_ccle, function(x) dbscan_programs(
 discr_clusters_minpt5_1.8_ccle <- discr_clusters_minpt5_1.8_ccle[sapply(discr_clusters_minpt5_1.8_ccle, is.list)]
 
 # save output
-saveRDS(discr_clusters_minpt5_1.8_ccle, 
-        file.path(OUTPUT_PATH,"module1/discr_clusters_minpt5_eps1.8_ccle.RDS"))
+if(!file.exists(file.path(OUTPUT_PATH,"module1/discr_clusters_minpt5_eps1.8_ccle.RDS")))
+  saveRDS(discr_clusters_minpt5_1.8_ccle, 
+          file.path(OUTPUT_PATH,"module1/discr_clusters_minpt5_eps1.8_ccle.RDS"))
 
 
 ## Added by DRT 2021-12-03
@@ -80,8 +81,11 @@ for(i in names(expr_ccle)) {
 }
 
 # save output
-saveRDS(w_basis_ccle, file.path(OUTPUT_PATH,"module1/nmf_w_basis_ccle.RDS"))
-saveRDS(h_coef_ccle, file.path(OUTPUT_PATH,"module1/nmf_h_coef_ccle.RDS"))
+if(!file.exists(file.path(OUTPUT_PATH,"module1/nmf_w_basis_ccle.RDS")))
+{
+    saveRDS(w_basis_ccle, file.path(OUTPUT_PATH,"module1/nmf_w_basis_ccle.RDS"))
+    saveRDS(h_coef_ccle, file.path(OUTPUT_PATH,"module1/nmf_h_coef_ccle.RDS"))
+}
        
       
 # ******************************************************************************************** 
@@ -107,5 +111,9 @@ for(i in names(expr_tumor)) {
 }
 
 # save output
-saveRDS(w_basis_tumor, file.path(OUTPUT_PATH,"module1/nmf_w_basis_tumor.RDS"))
-saveRDS(h_coef_tumor, file.path(OUTPUT_PATH,"module1/nmf_h_coef_tumor.RDS"))    
+if(!file.exists(file.path(OUTPUT_PATH,"module1/nmf_w_basis_tumor.RDS")))
+{
+    saveRDS(w_basis_tumor, file.path(OUTPUT_PATH,"module1/nmf_w_basis_tumor.RDS"))
+    saveRDS(h_coef_tumor, file.path(OUTPUT_PATH,"module1/nmf_h_coef_tumor.RDS"))    
+}
+

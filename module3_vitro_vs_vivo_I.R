@@ -13,50 +13,62 @@ source("custom_magma.R")
 source("control_geneset.R")
 
 
-OUTPUT_PATH <- "~/Kinker_output"
-DATAPATH <- "/data/QSBSC/Kinker_et_al"
+OUTPUT_PATH <- "~/Kinker_output"        # path to where output should be saved
+DATAPATH <- "/data/QSBSC/Kinker_et_al"  # path to where required data are
+OVERWRITE <- FALSE                      # whether to overwrite output files is already exist
 
 # read scRNA-seq data from cell lines and tumors
 expr_ccle <- readRDS(file.path(DATAPATH,"CCLE_heterogeneity_Rfiles/CCLE_scRNAseq_CPM.RDS")) # CCLE cell lines
 
 common_genes_ccle  <- Reduce(intersect, lapply(expr_ccle, rownames))
-expr_ccle <-  lapply(expr_ccle, function(x) x[common_genes_ccle,])              
-                     
+expr_ccle <-  lapply(expr_ccle, function(x) x[common_genes_ccle,])
+
 # calculate average gene expression 
 ave_expr_ccle <- rowMeans(do.call(cbind, expr_ccle))
+
+# names of top 7000 genes
 gene_uni_ccle <- names(sort(ave_expr_ccle, decreasing = T)[1:7000])
 
-# process data                     
+# process data
 expr_ccle <- lapply(expr_ccle, function(x) log2((x/10) + 1))
 ave_logexpr_ccle <- rowMeans(do.call(cbind, expr_ccle))          
 expr_ccle_cen <- lapply(expr_ccle, function(x) x-ave_logexpr_ccle)                        
 
-# read nmf programs from cell lines 
-nmf_programs_sig_ccle <- readRDS("Expected_results/module2/nmf_programs_sig_nc_ccle.RDS")   
-nmf_meta_programs_ccle <- readRDS("Expected_results/module2/nmf_metaprograms_programs_nc_ccle.RDS")   
-                        
+# read nmf programs from cell lines (from Expected results)
+# nmf_programs_sig_ccle <- readRDS("Expected_results/module2/nmf_programs_sig_nc_ccle.RDS")   
+# nmf_meta_programs_ccle <- readRDS("Expected_results/module2/nmf_metaprograms_programs_nc_ccle.RDS")   
+
+# read nmf programs from cell lines (from output; NOTE--does not match expected!)
+nmf_programs_sig_ccle <- readRDS(file.path(OUTPUT_PATH,"module2/nmf_programs_sig_nc_ccle.RDS"))
+nmf_meta_programs_ccle <- readRDS(file.path(OUTPUT_PATH,"module2/nmf_metaprograms_programs_nc_ccle.RDS"))
+
 # read  metaprograms from cell lines and tumors    
 nmf_meta_sig_ccle <- readRDS("Expected_results/module2/nmf_metaprograms_sigtop25_nc_ccle.RDS") # nmf - cell lines
-                     
-nmf_meta_sig_tumor <-  readRDS("Expected_results/module2/nmf_metaprograms_sigtop25_nc_tumor.RDS") # nmf- tumors 
-meta_sig_tumor_lit  <- unlist(list(read.table(
-  file.path(DATAPATH,"CCLE_heterogeneity_Rfiles/metaprograms_tumors_literature.txt"), 
-  sep = "\t", header = T,stringsAsFactors = F)), recursive=F)  # literature - tumors                     
+nmf_meta_sig_tumor <-  readRDS("Expected_results/module2/nmf_metaprograms_sigtop25_nc_tumor.RDS") # nmf - tumors 
+
+meta_sig_tumor_lit  <- unlist(list(read.table(file.path(DATAPATH,"CCLE_heterogeneity_Rfiles/metaprograms_tumors_literature.txt"),
+                                              sep = "\t", header = T,stringsAsFactors = F)), recursive=F)  # literature - tumors                     
+
 # meta_sig_tumor_all <- c(meta_sig_tumor_lit, nmf_meta_sig_tumor)
 meta_sig_tumor_all <- c(meta_sig_tumor_lit, lapply(nmf_meta_sig_tumor, names))
 meta_sig_tumor_all <- lapply(meta_sig_tumor_all, function(x) x[x!=""])
-                           
+                      
 
 # ************************************************************************** 
 # Compare metaprograms signatures from cell lines and tumors
 # (jaccard index and hypergeometric test)                             
                              
 # hypergeometric test and jaccard index
-# nmf_meta_sig_ccle_filt <- lapply(nmf_meta_sig_ccle, function(x){ x[is.element(x, gene_uni_ccle)]})   
-# meta_sig_tumor_all_filt <- lapply(meta_sig_tumor_all, function(x){ x[is.element(x, gene_uni_ccle)]})                             
-nmf_meta_sig_ccle_filt <- lapply(nmf_meta_sig_ccle, function(x){ x[is.element(names(x), gene_uni_ccle)]})   
-meta_sig_tumor_all_filt <- lapply(meta_sig_tumor_all, function(x){ x[is.element(names(x), gene_uni_ccle)]})                             
+nmf_meta_sig_ccle_filt <- lapply(nmf_meta_sig_ccle, function(x){ x[is.element(x, gene_uni_ccle)]})
+meta_sig_tumor_all_filt <- lapply(meta_sig_tumor_all, function(x){ x[is.element(x, gene_uni_ccle)]})
 
+### working on this code ###
+
+nmf_meta_sig_ccle_filt <- lapply(nmf_meta_sig_ccle, function(x){ x[is.element(names(x), gene_uni_ccle)]})   
+# nmf_meta_sig_ccle_filt <- lapply(nmf_meta_sig_ccle, function(x){ x[x %in% gene_uni_ccle]})
+meta_sig_tumor_all_filt <- lapply(meta_sig_tumor_all, function(x){ x[is.element(names(x), gene_uni_ccle)]})
+
+### Function that may not be correct
 meta_jaccard_vivovitro <- sapply(nmf_meta_sig_ccle_filt, function(x) sapply(meta_sig_tumor_all, function(y) length(intersect(x,y))/length(union(x,y) )))             
 meta_phyper_vivovitro  <- sapply(nmf_meta_sig_ccle_filt, function(x) sapply(meta_sig_tumor_all, function(y) phyper(q=length(intersect(x,y)), m= length(x), 7000-length(x), k=length(y), lower.tail = F)))   
                                                              
@@ -95,29 +107,38 @@ meta_phyper_vivovitro <- meta_phyper_vivovitro[rownames(meta_jaccard_vivovitro),
 meta_jaccard_vivovitro_melt <- reshape2::melt(meta_jaccard_vivovitro)                      
 meta_phyper_vivovitro_melt  <-  reshape2::melt(meta_phyper_vivovitro)                                                                                                                           
 red_palette <- brewer.pal(9, "Reds")   
-                                     
-pdf(file.path(OUTPUT_PATH,"module3/meta_vitroVSvivo_jaccard.pdf"), width = 6, height = 5)
-ggplot(meta_jaccard_vivovitro_melt, aes(x=Var2, y=Var1, fill=value, color=value)) +
+
+jaccard_filepath <- file.path(OUTPUT_PATH,"module3/meta_vitroVSvivo_jaccard.pdf")
+if(!file.exists(jaccard_filepath) | OVERWRITE)
+{
+  pdf(jaccard_filepath, width = 6, height = 5)
+  ggplot(meta_jaccard_vivovitro_melt, aes(x=Var2, y=Var1, fill=value, color=value)) +
     geom_tile() +
     labs(x="In vitro", y="In vivo") +                                 
-     scale_fill_gradient2(limits=c(0.01, 0.16), midpoint = 0.085, low= c( "white",red_palette[1:3]), mid= red_palette[4:6], high = red_palette[7:9] ,   oob=squish, name="Jaccard\nindex")+
-  scale_color_gradient2(limits=c(0.01, 0.16), midpoint = 0.085, low= c("white",red_palette[1:3]), mid= red_palette[4:6], high = red_palette[7:9] ,   oob=squish, name="Jaccard\nindex") +
+    scale_fill_gradient2(limits=c(0.01, 0.16), midpoint = 0.085, low= c( "white",red_palette[1:3]), mid= red_palette[4:6], high = red_palette[7:9] ,   oob=squish, name="Jaccard\nindex")+
+    scale_color_gradient2(limits=c(0.01, 0.16), midpoint = 0.085, low= c("white",red_palette[1:3]), mid= red_palette[4:6], high = red_palette[7:9] ,   oob=squish, name="Jaccard\nindex") +
     theme(axis.text.x=element_text(angle=45, hjust=1), panel.background = element_blank(), panel.border = element_rect(fill=F), axis.text=element_text(size=11), axis.title=element_text(size=12))+
- scale_x_discrete(expand=c(0,0), labels = c("Skin pig.", "Epi. sen.", "p53-dep. sen.",  "EMT I", "EMT III" , "EMT II",  "IFN resp.", "Stress", "Prot. mat.", "Prot. deg."   )) +
- scale_y_discrete(expand=c(0,0), labels = rev(c("Melanoma MITF", "HSNCC epi. dif. 1", "Meta epi. sen.", "Melanoma AXL", "HNSCC pEMT", "Meta pEMT", "GBS mes. 1", "Ovarian IFN", "HNSCC pEMT", "Meta stress", "GBM mes. 2")))                                                                          
-dev.off()    
-    
-pdf(file.path(OUTPUT_PATH,"module3/meta_vitroVSvivo_phyper.pdf"), width = 6, height = 5)                                 
-ggplot(meta_phyper_vivovitro_melt, aes(x=Var2, y=Var1, fill=-log10(value), -log10(color=value))) +
+    scale_x_discrete(expand=c(0,0), labels = c("Skin pig.", "Epi. sen.", "p53-dep. sen.",  "EMT I", "EMT III" , "EMT II",  "IFN resp.", "Stress", "Prot. mat.", "Prot. deg."   )) +
+    scale_y_discrete(expand=c(0,0), labels = rev(c("Melanoma MITF", "HSNCC epi. dif. 1", "Meta epi. sen.", "Melanoma AXL", "HNSCC pEMT", "Meta pEMT", "GBS mes. 1", "Ovarian IFN", "HNSCC pEMT", "Meta stress", "GBM mes. 2")))                                                                          
+  dev.off()  
+}
+
+phyper_filepath <- file.path(OUTPUT_PATH,"module3/meta_vitroVSvivo_phyper.pdf")
+
+if(!file.exists(phyper_filepath) | OVERWRITE)
+{
+  pdf(, width = 6, height = 5)                                 
+  ggplot(meta_phyper_vivovitro_melt, aes(x=Var2, y=Var1, fill=-log10(value), -log10(color=value))) +
     geom_tile() +
     labs(x="In vitro", y="In vivo") +                                 
-     scale_fill_gradient2(limits=c(1, 12), midpoint = 6.5, low= c( "white",red_palette[1:3]), mid= red_palette[4:6], high = red_palette[7:9] ,   oob=squish, name="P adjust\n(fdr)")+
-  scale_color_gradient2(limits=c(1, 12), midpoint = 6.5, low= c("white",red_palette[1:3]), mid= red_palette[4:6], high = red_palette[7:9] ,   oob=squish, name="P adjust\n(fdr)") +
+    scale_fill_gradient2(limits=c(1, 12), midpoint = 6.5, low= c( "white",red_palette[1:3]), mid= red_palette[4:6], high = red_palette[7:9] ,   oob=squish, name="P adjust\n(fdr)")+
+    scale_color_gradient2(limits=c(1, 12), midpoint = 6.5, low= c("white",red_palette[1:3]), mid= red_palette[4:6], high = red_palette[7:9] ,   oob=squish, name="P adjust\n(fdr)") +
     theme(axis.text.x=element_text(angle=45, hjust=1), panel.background = element_blank(), panel.border = element_rect(fill=F), axis.text=element_text(size=11), axis.title=element_text(size=12))+                           
- scale_x_discrete(expand=c(0,0), labels = c("Skin pig.", "Epi. sen.", "p53-dep. sen.",  "EMT I", "EMT III" , "EMT II",  "IFN resp.", "Stress", "Prot. mat.", "Prot. deg."   )) +
- scale_y_discrete(expand=c(0,0), labels = rev(c("Melanoma MITF", "HSNCC epi. dif. 1", "Meta epi. sen.", "Melanoma AXL", "HNSCC pEMT", "Meta pEMT", "GBS mes. 1", "Ovarian IFN", "HNSCC stress", "Meta stress", "GBM mes. 2")))                                    
-dev.off()    
-                                                       
+    scale_x_discrete(expand=c(0,0), labels = c("Skin pig.", "Epi. sen.", "p53-dep. sen.",  "EMT I", "EMT III" , "EMT II",  "IFN resp.", "Stress", "Prot. mat.", "Prot. deg."   )) +
+    scale_y_discrete(expand=c(0,0), labels = rev(c("Melanoma MITF", "HSNCC epi. dif. 1", "Meta epi. sen.", "Melanoma AXL", "HNSCC pEMT", "Meta pEMT", "GBS mes. 1", "Ovarian IFN", "HNSCC stress", "Meta stress", "GBM mes. 2")))                                    
+  dev.off()
+}
+                                          
 # ************************************************************************** 
 # Compare individual programs (not metaprograms) from cell lines to tumor metaprograms 
 # (mean jaccard index and mean correlation of program scores)                                          
@@ -177,16 +198,20 @@ indprog_jaccard_vivovitro <- data.frame(aggregate(indprog_jaccard_vivovitro, lis
 
 # plot                                                
 jaccard_corr_plot <- data.frame(melt(as.matrix(indprog_corr_vivovitro)),  melt(as.matrix(indprog_jaccard_vivovitro)))                 
-                                                        
-pdf(file.path(OUTPUT_PATH,"module3/indprog_vitroVSvivo_jaccard&corr.pdf"), width = 9, height = 5, onefile = F)                                                                                             
-ggplot(jaccard_corr_plot, aes(x=value, y=value.1)) +
-  geom_point(size=4, shape=21, fill="gray90") +
-  facet_wrap(facets = vars(Var1), nrow = 2) +
-  geom_hline(yintercept =  quantile(unlist(jaccard_perm), 0.999), linetype="dashed") +
-  geom_vline(xintercept =  quantile(unlist(corr_perm), 0.999), linetype="dashed") +
-  theme(panel.background = element_blank(), panel.border = element_rect(fill=F), strip.text = element_text(size=13), strip.background = element_blank(), axis.text = element_text(size=12), axis.title = element_text(size=13)) +
-  labs(y="Mean similarity\n(Jaccard Index)", x="Mean correlation") +
-  scale_x_continuous(breaks=seq(-0.5, 0.5, 0.5))
-dev.off()
-                                                            
-                                     
+                        
+jaccard_cor_filepath <- file.path(OUTPUT_PATH,"module3/indprog_vitroVSvivo_jaccard&corr.pdf")
+
+if(!file.exists(jaccard_cor_filepath) | OVERWRITE)
+{
+  pdf(jaccard_cor_filepath, width = 9, height = 5, onefile = F)                                                                                             
+  ggplot(jaccard_corr_plot, aes(x=value, y=value.1)) +
+    geom_point(size=4, shape=21, fill="gray90") +
+    facet_wrap(facets = vars(Var1), nrow = 2) +
+    geom_hline(yintercept =  quantile(unlist(jaccard_perm), 0.999), linetype="dashed") +
+    geom_vline(xintercept =  quantile(unlist(corr_perm), 0.999), linetype="dashed") +
+    theme(panel.background = element_blank(), panel.border = element_rect(fill=F), strip.text = element_text(size=13), strip.background = element_blank(), axis.text = element_text(size=12), axis.title = element_text(size=13)) +
+    labs(y="Mean similarity\n(Jaccard Index)", x="Mean correlation") +
+    scale_x_continuous(breaks=seq(-0.5, 0.5, 0.5))
+  dev.off()
+}                                                            
+                            
