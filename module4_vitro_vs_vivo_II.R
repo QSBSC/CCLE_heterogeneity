@@ -9,10 +9,16 @@
 library(reshape2)
 library(ggplot2)
 library(scales)
-                                               
+
+
+OUTPUT_PATH <- "~/Kinker_output"        # path to where output should be saved
+DATAPATH <- "/data/QSBSC/Kinker_et_al"  # path to where required data are
+OVERWRITE <- FALSE                      # whether to overwrite output files is already exist
+
 # read scRNA-seq data from cell lines and tumors
-expr_ccle <- readRDS("CCLE_heterogeneity_Rfiles/CCLE_scRNAseq_CPM.RDS") # CCLE cell lines
-expr_tumor <- readRDS("CCLE_heterogeneity_Rfiles/tumors_scRNAseq_logTPM.RDS") # human tumors
+expr_ccle <- readRDS(file.path(DATAPATH,"CCLE_heterogeneity_Rfiles/CCLE_scRNAseq_CPM.RDS")) # CCLE cell lines
+
+expr_tumor <- readRDS(file.path(DATAPATH,"CCLE_heterogeneity_Rfiles/tumors_scRNAseq_logTPM.RDS")) # human tumors
 
 # calculate average gene expression
 rowmeans_ccle <- lapply(expr_ccle, rowMeans)                 
@@ -25,8 +31,12 @@ expr_ccle <- lapply(expr_ccle, function(x) {x-rowMeans(x)})
 expr_tumor <- lapply(expr_tumor, function(x) {x-rowMeans(x)})
 
 # select relevant cell lines and tumors   
-nmf_metaprograms_programs_nc_ccle<- readRDS("Expected_results/module2/nmf_metaprograms_programs_nc_ccle.RDS")   # programs in each cell line metaprogram
-nmf_metaprograms_programs_nc_tumor<- readRDS("Expected_results/module2/nmf_metaprograms_programs_nc_tumor.RDS") # programs in each tumor metaprogram                             
+# nmf_metaprograms_programs_nc_ccle<- readRDS("Expected_results/module2/nmf_metaprograms_programs_nc_ccle.RDS")   # programs in each cell line metaprogram
+# nmf_metaprograms_programs_nc_tumor<- readRDS("Expected_results/module2/nmf_metaprograms_programs_nc_tumor.RDS") # programs in each tumor metaprogram                             
+
+nmf_metaprograms_programs_nc_ccle <- readRDS(file.path(OUTPUT_PATH,"module2/nmf_metaprograms_programs_nc_ccle.RDS"))
+nmf_metaprograms_programs_nc_tumor<- readRDS(file.path(OUTPUT_PATH,"module2/nmf_metaprograms_programs_nc_tumor.RDS")) # programs in each tumor metaprogram                             
+
                           
 episen_emt_ccle <- intersect(gsub(".{4}$", "",nmf_metaprograms_programs_nc_ccle$episen), gsub(".{4}$", "",nmf_metaprograms_programs_nc_ccle$emtII))
 episen_emt_ccle <- unique(episen_emt_ccle[grep("UPPER", episen_emt_ccle)])  # HNCSS cell lines harboring both EpiSen and EMTII                                                                               
@@ -37,13 +47,17 @@ skinpig_emt_ccle <- intersect(gsub(".{4}$", "",nmf_metaprograms_programs_nc_ccle
 skinpig_emt_tumor <- names(expr_tumor)[grep("mel", names(expr_tumor))] # melanoma tumors harboring both skinpig and EMTI  
 
 # read metaprogram signatures from cell lines
-meta_sig_ccle <- readRDS("Expected_results/module2/nmf_metaprograms_sig_nc_ccle.RDS")
+# meta_sig_ccle <- readRDS("Expected_results/module2/nmf_metaprograms_sig_nc_ccle.RDS")
+meta_sig_ccle <- readRDS(file.path(OUTPUT_PATH,"module2/nmf_metaprograms_sig_nc_ccle.RDS"))
+
 meta_sig_ccle <- meta_sig_ccle[c("skinpig", "emtI", "episen", "emtII")]
 names(meta_sig_ccle) <- paste0(names(meta_sig_ccle), "_vitro")                         
 meta_sig_ccle <- lapply(meta_sig_ccle, function(x) names(x[1:100]))           
                                                                                     
 # read metaprogram signatures from tumors                                             
-meta_sig_tumor  <- unlist(list(read.table("CCLE_heterogeneity_Rfiles/metaprograms_tumors_literature.txt", sep = "\t", header = T,stringsAsFactors = F)), recursive=F)
+# meta_sig_tumor  <- unlist(list(read.table("CCLE_heterogeneity_Rfiles/metaprograms_tumors_literature.txt", sep = "\t", header = T,stringsAsFactors = F)), recursive=F)
+meta_sig_tumor  <- unlist(list(read.table(file.path(DATAPATH,"CCLE_heterogeneity_Rfiles/metaprograms_tumors_literature.txt"), sep = "\t", header = T,stringsAsFactors = F)), recursive=F)
+
 meta_sig_tumor <- meta_sig_tumor[c("melanoma.MITF.program", "melanoma.AXL.program", "HNSCC.PEMT","HNSCC.Epidif.1" )]  
 meta_sig_tumor <- lapply(meta_sig_tumor, function(x) x[x!=""])                                             
   
