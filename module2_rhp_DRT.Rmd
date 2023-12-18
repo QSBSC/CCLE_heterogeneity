@@ -316,7 +316,7 @@ p4.1 <- ggplot(data = nmf_intersect_melt_nc_ccle, aes(x=Var1, y=Var2, fill=100*v
     scale_fill_gradient2(limits=c(2,25), low=custom_magma[1:111],  mid =custom_magma[112:222], high = custom_magma[223:333], 
                          midpoint = 13.5, oob=squish, name="Similarity\n(Jaccard index)") + 
     theme( axis.ticks = element_blank(), panel.background = element_blank(), 
-           panel.border=element_rect(colour = "gray40", size = 0.4, fill=F),  
+           panel.border=element_rect(colour = "gray40", linewidth = 0.4, fill=F),  
            axis.line = element_blank(), axis.text.x = element_blank(), axis.title.x=element_blank(), 
            axis.text.y=element_text(size=10),  legend.title = element_text(size=10), 
            legend.text = element_text(size = 9), legend.text.align = 0.5, legend.direction = "horizontal",
@@ -418,7 +418,7 @@ p4.3 <- ggplot(data = nmf_nc_genes_melt, aes(x=Var2, y=Var1, fill=value*100)) +
     scale_color_gradient2(limits=c(0,8), low= "#b5cce3", mid=  "white", high = "darkred", midpoint = 4, 
                           oob=squish, name=expression(paste("NMF score (10"^"2", ")", sep = ""))) + 
     theme( axis.ticks = element_blank(), panel.background = element_blank(), 
-           panel.border=element_rect(colour = "black", size = 0.4, fill=F),   
+           panel.border=element_rect(colour = "black", linewidth = 0.4, fill=F),   
            axis.line = element_blank(), axis.title = element_text(size = 12), 
            axis.text = element_text(size = 10), legend.title = element_text(size=10), 
            legend.text = element_text(size = 9), legend.text.align = 0.5, 
@@ -469,12 +469,18 @@ nmf_intersect_melt_tumor <- reshape2::melt(nmf_intersect_tumor)
 
 p5.1 <- ggplot(data = nmf_intersect_melt_tumor, aes(x=Var1, y=Var2, fill=100*value/(100-value))) + 
   geom_tile() + 
-  scale_color_gradient2(limits=c(2,25), low=custom_magma[1:111],  mid =custom_magma[112:222], high = custom_magma[223:333], midpoint = 13.5, oob=squish, name="Similarity\n(Jaccard index)") +                                
-  scale_fill_gradient2(limits=c(2,25), low=custom_magma[1:111],  mid =custom_magma[112:222], high = custom_magma[223:333], midpoint = 13.5, oob=squish, name="Similarity\n(Jaccard index)")  +
-  theme( axis.ticks = element_blank(), panel.border = element_rect(fill=F), panel.background = element_blank(),  axis.line = element_blank(), axis.text = element_text(size = 11), axis.title = element_text(size = 12), legend.title = element_text(size=11), legend.text = element_text(size = 10), legend.text.align = 0.5, legend.justification = "bottom") + 
-  scale_x_discrete(name="\nPrograms", breaks=unique(nmf_intersect_melt_tumor$Var1)[seq(10, length(unique(nmf_intersect_melt_tumor$Var1)), by=10)], labels= seq(10, length(unique(nmf_intersect_melt_tumor$Var1)), by=10)) + 
-  scale_y_discrete(name="\nPrograms", breaks=unique(nmf_intersect_melt_tumor$Var2)[seq(10, length(unique(nmf_intersect_melt_tumor$Var2)), by=10)], labels= seq(10, length(unique(nmf_intersect_melt_tumor$Var2)), by=10))  +
-  geom_vline(xintercept=c(424,504), linetype="longdash", size=0.6)+
+  scale_color_gradient2(limits=c(2,25), low=custom_magma[1:111],  mid =custom_magma[112:222], high = custom_magma[223:333], 
+                        midpoint = 13.5, oob=squish, name="Similarity\n(Jaccard index)") +                                
+  scale_fill_gradient2(limits=c(2,25), low=custom_magma[1:111],  mid =custom_magma[112:222], high = custom_magma[223:333], 
+                       midpoint = 13.5, oob=squish, name="Similarity\n(Jaccard index)")  +
+  theme( axis.ticks = element_blank(), panel.border = element_rect(fill=F), panel.background = element_blank(),  
+         axis.line = element_blank(), axis.text = element_text(size = 11), axis.title = element_text(size = 12), 
+         legend.title = element_text(size=11), legend.text = element_text(size = 10), legend.text.align = 0.5, legend.justification = "bottom") + 
+  scale_x_discrete(name="\nPrograms", breaks=unique(nmf_intersect_melt_tumor$Var1)[seq(10, length(unique(nmf_intersect_melt_tumor$Var1)), by=10)], 
+                   labels= seq(10, length(unique(nmf_intersect_melt_tumor$Var1)), by=10)) + 
+  scale_y_discrete(name="\nPrograms", breaks=unique(nmf_intersect_melt_tumor$Var2)[seq(10, length(unique(nmf_intersect_melt_tumor$Var2)), by=10)], 
+                   labels= seq(10, length(unique(nmf_intersect_melt_tumor$Var2)), by=10))  +
+  geom_vline(xintercept=c(424,504), linetype="longdash", linewidth=0.6)+
   guides(fill = guide_colourbar(barheight = 4, barwidth = 1))
                                                                            
                                                                            
@@ -483,9 +489,14 @@ nmf_annot_type_tumor  <- data.frame("type"=sub("\\_.*", "", colnames(nmf_interse
 
 p5.2 <- ggplot(nmf_annot_type_tumor, aes(y=0, x=1:nrow(nmf_annot_type_tumor), fill=type, color=type)) +
   geom_tile() +
-  scale_color_manual(values =c(brewer.pal(12, "Set3")[c(3,7)], "maroon", "slateblue2"),labels=c("Breast Cancer",  "Head and Neck Cancer", "Lung Cancer", "Melanoma"), name="") +
-  scale_fill_manual(values =c(brewer.pal(12, "Set3")[c(3,7)], "maroon", "slateblue2"),labels=c("Breast Cancer",  "Head and Neck Cancer", "Lung Cancer", "Melanoma"), name="") +
-  theme(axis.ticks = element_blank(), panel.background = element_rect(fill = "white"),  axis.line = element_blank(), axis.text = element_blank(), legend.text = element_text(size = 12),   plot.margin = unit(c(0,4,-0.6,1), "cm"),  legend.box.margin = unit(c(4,0,1,1), "cm"), legend.position = "left", legend.text.align = 1, legend.justification = "right", legend.key.size = unit(0.4, "cm")) +
+  scale_color_manual(values =c(brewer.pal(12, "Set3")[c(3,7)], "maroon", "slateblue2"),
+                     labels=c("Breast Cancer",  "Head and Neck Cancer", "Lung Cancer", "Melanoma"), name="") +
+  scale_fill_manual(values =c(brewer.pal(12, "Set3")[c(3,7)], "maroon", "slateblue2"),
+                    labels=c("Breast Cancer",  "Head and Neck Cancer", "Lung Cancer", "Melanoma"), name="") +
+  theme(axis.ticks = element_blank(), panel.background = element_rect(fill = "white"),  axis.line = element_blank(), 
+        axis.text = element_blank(), legend.text = element_text(size = 12),   plot.margin = unit(c(0,4,-0.6,1), "cm"),  
+        legend.box.margin = unit(c(4,0,1,1), "cm"), legend.position = "left", legend.text.align = 1, 
+        legend.justification = "right", legend.key.size = unit(0.4, "cm")) +
   scale_x_continuous(expand = c(0,0)) +
   labs(x="", y="") +
   guides(fill = guide_legend(title = "", label.position="left",  override.aes = list(size = 5), ncol = 1), color=FALSE) 
@@ -503,9 +514,11 @@ for(i in rownames(nmf_corr_complexity_tumor)) {
 }
 
 p5.3 <- ggplot(nmf_corr_complexity_tumor, aes(y=corr, x = 1:nrow(nmf_corr_complexity_tumor))) +
-  geom_smooth(span=0.05, se = FALSE, color="gray36", size= 0.8, method = "loess") + 
+  geom_smooth(span=0.05, se = FALSE, color="gray36", linewidth=0.8, method = "loess") + 
   geom_point(alpha=0.3, size = 1.5) + 
-  theme(axis.ticks = element_blank(), axis.line = element_blank(), panel.background = element_rect(fill = "gray97"), panel.grid = element_blank(), axis.text.x = element_blank(), axis.title = element_text(size = 12), axis.text.y = element_text(size = 10), plot.margin=unit(c(1,1,-0.6,1), "cm") ) + 
+  theme(axis.ticks = element_blank(), axis.line = element_blank(), panel.background = element_rect(fill = "gray97"), 
+        panel.grid = element_blank(), axis.text.x = element_blank(), axis.title = element_text(size = 12), 
+        axis.text.y = element_text(size = 10), plot.margin=unit(c(1,1,-0.6,1), "cm") ) + 
   labs(y="Cell complexity\ncorrelation", x="") + 
   scale_y_continuous(expand = c(0,0), limits = c(-0.9,0.9), breaks = seq(-0.8, 0.8, 0.4)) + 
   scale_x_continuous(expand = c(0,0))                                                                           
